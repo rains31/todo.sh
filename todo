@@ -1,0 +1,49 @@
+#!/bin/bash
+# Author: rain31(at)gmail.com
+
+umask 0177
+TODO=$HOME/todo.txt
+[ -f $TODO ] || touch $TODO 
+case $1 in
+    "-a"|"--add")
+        shift
+        echo "[ ] $*" >> "$TODO"
+        echo add "'$*'" into todo.txt.
+        ;;
+
+    "-d"|"--done")
+        [ -z $2 ] && echo "Usage: $0 $1 lineNum[,toLineNum]" && exit
+        sed -i "$2s/\[ \]/\[x\]/" "$TODO"
+        ;;
+
+    "-u"|"--undo")
+        [ -z $2 ] && echo "Usage: $0 $1 lineNum[,toLineNum]" && exit
+        sed -i "$2s/\[x\]/\[ \]/" "$TODO"
+        ;;
+
+    "-D"|"--del"|"--delete")
+        [ -z $2 ] && echo "Usage: $0 $1 lineNum[,toLineNum]" && exit
+        sed -i "$2d" "$TODO"
+        ;;
+
+    "-r"|"--recycle")
+        sed -i '/^\[x\]/d' "$TODO"
+        ;;
+
+    "-l"|"--list"|"")
+        cat "$TODO" | awk '{if($1=="[x]"){x=9}else{x=1};printf("\033[%d;37m"NR" "$0"\033[m\n",x);}' 
+        ;;
+    "-h"|"--help")
+        echo -e "Usage:\n\t" \
+                "$0 -a add\n\t" \
+                "$0 -d done\n\t" \
+                "$0 -D delete\n\t" \
+                "$0 -r recycle\n\t" \
+                "$0 -l list\n\t" \
+                "$0 -h this help"
+        ;;
+
+    *)
+        $0 -a "$*"
+        ;;
+esac
