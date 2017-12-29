@@ -31,7 +31,7 @@ case $1 in
         ;;
 
     "-l"|"--list"|"")
-        cat "$TODO" | awk '{if($1=="[x]"){x=9}else{x=1};printf("\033[%d;37m"NR" "$0"\033[m\n",x);}' 
+        cat "$TODO" | awk '{printf("\033[%d;37m"NR" "$0"\033[m\n",$1=="[x]"?9:1);}' 
         ;;
     "-h"|"--help")
         echo -e "Usage:\n\t" \
