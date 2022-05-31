@@ -1,6 +1,6 @@
 #!/bin/bash
-# Author: rain31(at)gmail.com
-
+# author: rain31@gmail.com
+# github: https://github.com/rains31
 umask 0177
 TODO=$HOME/todo.txt
 [ -f $TODO ] || touch $TODO 
