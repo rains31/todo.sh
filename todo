@@ -1,49 +1,70 @@
 #!/bin/bash
 # author: rain31@gmail.com
 # github: https://github.com/rains31
+# 优先考虑gsed和gawk, macos下的sed行为跟gnu的不太一样，awk还好
+hash gsed &>/dev/null && SED=gsed || SED=sed
+hash gawk &>/dev/null && AWK=gawk || AWK=awk
 umask 0177
 TODO=$HOME/todo.txt
-[ -f $TODO ] || touch $TODO 
+
+[ -f $TODO ] || touch $TODO
 case $1 in
-    "-a"|"--add")
-        shift
-        echo "[ ] $*" >> "$TODO"
-        echo add "'$*'" into todo.txt.
-        ;;
+"-a" | "--add")
+    shift
+    echo "- [ ] $*" >>"$TODO"
+    echo add "'$*'" into todo.txt.
+    $0
+    ;;
 
-    "-d"|"--done")
-        [ -z $2 ] && echo "Usage: $0 $1 lineNum[,toLineNum]" && exit
-        sed -i "$2s/\[ \]/\[x\]/" "$TODO"
-        ;;
+"-d" | "--done")
+    [ -z $2 ] && echo "Usage: $0 $1 lineNum[,toLineNum] [!?x]" && exit
+    MARK=${3-x}
+    [ ${#MARK} -gt 1 ] && exit 1
+    [ -z $(echo -n "$MARK" | tr -d '!?x') ] || exit 1
+    $SED -i "$2s/\[.\]/\[${MARK}\]/" "$TODO"
+    $0
+    ;;
 
-    "-u"|"--undo")
-        [ -z $2 ] && echo "Usage: $0 $1 lineNum[,toLineNum]" && exit
-        sed -i "$2s/\[x\]/\[ \]/" "$TODO"
-        ;;
+"-u" | "--undo")
+    [ -z $2 ] && echo "Usage: $0 $1 lineNum[,toLineNum]" && exit
+    $SED -i "$2s/\[.\]/\[ \]/" "$TODO"
+    $0
+    ;;
 
-    "-D"|"--del"|"--delete")
-        [ -z $2 ] && echo "Usage: $0 $1 lineNum[,toLineNum]" && exit
-        sed -i "$2d" "$TODO"
-        ;;
+"-D" | "--del" | "--delete")
+    [ -z $2 ] && echo "Usage: $0 $1 lineNum[,toLineNum]" && exit
+    $SED -i "$2d" "$TODO"
+    $0
+    ;;
 
-    "-r"|"--recycle")
-        sed -i '/^\[x\]/d' "$TODO"
-        ;;
+"-r" | "--recycle")
+    $SED -i '/^\[.\]/d' "$TODO"
+    $0
+    ;;
 
-    "-l"|"--list"|"")
-        cat "$TODO" | awk '{printf("\033[%d;37m"NR" "$0"\033[m\n",$1=="[x]"?9:1);}' 
-        ;;
-    "-h"|"--help")
-        echo -e "Usage:\n\t" \
-                "$0 -a add\n\t" \
-                "$0 -d done\n\t" \
-                "$0 -D delete\n\t" \
-                "$0 -r recycle\n\t" \
-                "$0 -l list\n\t" \
-                "$0 -h this help"
-        ;;
+"-s" | "--sort")
+    cat "$TODO" | sort >"$TODO~" && mv "$TODO~" "$TODO"
+    $0
+    ;;
 
-    *)
-        $0 -a "$*"
-        ;;
+"-l" | "--list" | "")
+    echo -e "\033[2J\033[1;1H"
+    cat "$TODO" | $AWK '{printf("\033[%dm"NR" "$0"\033[m\n",$1=="[x]"||$2=="[x]"?9:$1=="[!]"||$2=="[!]"?31:$1=="[?]"||$2=="[?]"?33:32);}'
+    ;;
+
+"-h" | "--help")
+    echo -e "Usage:\n\t" \
+        "$0 -a add\n\t" \
+        "$0 -d done\n\t" \
+        "$0 -u undo\n\t" \
+        "$0 -D delete\n\t" \
+        "$0 -r recycle\n\t" \
+        "$0 -s sort\n\t" \
+        "$0 -l list\n\t" \
+        "$0 -h this help"
+    ;;
+
+*)
+    $0 -a "$*"
+    ;;
 esac
