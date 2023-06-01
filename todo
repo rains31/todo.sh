@@ -1,70 +1,115 @@
 #!/bin/bash
 # author: rain31@gmail.com
 # github: https://github.com/rains31
-# 优先考虑gsed和gawk, macos下的sed行为跟gnu的不太一样，awk还好
+
+# This is a simple todo tool implemented in Shell.
+
+# Rewritten by ChatGPT
+
+# Set the path to the todo.txt file
+TODO="$HOME/todo.txt"
+
+# Check if gsed is available, otherwise use sed
 hash gsed &>/dev/null && SED=gsed || SED=sed
+# Check if gawk is available, otherwise use awk
 hash gawk &>/dev/null && AWK=gawk || AWK=awk
+
+# Set the file permissions for todo.txt
 umask 0177
-TODO=$HOME/todo.txt
 
-[ -f $TODO ] || touch $TODO
-case $1 in
-"-a" | "--add")
-    shift
-    echo "- [ ] $*" >>"$TODO"
-    echo add "'$*'" into todo.txt.
-    $0
-    ;;
+# Create the todo.txt file if it doesn't exist
+[ -f "$TODO" ] || touch "$TODO"
 
-"-d" | "--done")
-    [ -z $2 ] && echo "Usage: $0 $1 lineNum[,toLineNum] [!?x]" && exit
-    MARK=${3-x}
-    [ ${#MARK} -gt 1 ] && exit 1
-    [ -z $(echo -n "$MARK" | tr -d '!?x') ] || exit 1
-    $SED -i "$2s/\[.\]/\[${MARK}\]/" "$TODO"
-    $0
-    ;;
+# Function to display usage information
+usage() {
+    echo -e "Usage:\n\t$0 -a|--add <task>\n\t$0 -d|--done <task_number>\n\t$0 -u|--undo <task_number>\n\t$0 -D|--del|--delete <task_number>\n\t$0 -r|--recycle\n\t$0 -s|--sort\n\t$0 -l|--list\n\t$0 -h|--help"
+}
 
-"-u" | "--undo")
-    [ -z $2 ] && echo "Usage: $0 $1 lineNum[,toLineNum]" && exit
-    $SED -i "$2s/\[.\]/\[ \]/" "$TODO"
-    $0
-    ;;
+# Function to add a task to the todo list
+add_task() {
+    local task="$*"
+    echo "- [ ] $task" >>"$TODO"
+    echo "Added '$task' to todo.txt."
+    $0 -l
+}
 
-"-D" | "--del" | "--delete")
-    [ -z $2 ] && echo "Usage: $0 $1 lineNum[,toLineNum]" && exit
-    $SED -i "$2d" "$TODO"
-    $0
-    ;;
+# Function to mark a task as done
+mark_done() {
+    local task_number="$1"
+    [ -z "$task_number" ] && echo "Usage: $0 -d|--done <task_number>" && exit 1
+    local marker="${3-x}"
+    [ "${#marker}" -gt 1 ] && exit 1
+    [ -z "$(echo -n "$marker" | tr -d '!?x')" ] || exit 1
+    $SED -i "$task_number s/\[.\]/[$marker]/" "$TODO"
+    $0 -l
+}
 
-"-r" | "--recycle")
+# Function to undo a completed task
+undo_done() {
+    local task_number="$1"
+    [ -z "$task_number" ] && echo "Usage: $0 -u|--undo <task_number>" && exit 1
+    $SED -i "$task_number s/\[.\]/[ ]/" "$TODO"
+    $0 -l
+}
+
+# Function to delete a task
+delete_task() {
+    local task_number="$1"
+    [ -z "$task_number" ] && echo "Usage: $0 -D|--del|--delete <task_number>" && exit 1
+    $SED -i "$task_number d" "$TODO"
+    $0 -l
+}
+
+# Function to recycle completed tasks
+recycle_completed() {
     $SED -i '/^\[.\]/d' "$TODO"
-    $0
-    ;;
+    $0 -l
+}
 
-"-s" | "--sort")
-    cat "$TODO" | sort >"$TODO~" && mv "$TODO~" "$TODO"
-    $0
-    ;;
+# Function to sort the task list
+sort_tasks() {
+    sort "$TODO" -o "$TODO"
+    $0 -l
+}
 
-"-l" | "--list" | "")
-    echo -e "\033[2J\033[1;1H"
-    cat "$TODO" | $AWK '{printf("\033[%dm"NR" "$0"\033[m\n",$1=="[x]"||$2=="[x]"?9:$1=="[!]"||$2=="[!]"?31:$1=="[?]"||$2=="[?]"?33:32);}'
-    ;;
+# Function to list tasks
+list_tasks() {
+    echo -ne "\033[2J\033[1;1H"
+    $AWK '{printf("\033[%dm%d %s\033[m\n", $1=="[x]"||$2=="[x]"?9:$1=="[!]"||$2=="[!]"?31:$1=="[?]"||$2=="[?]"?33:32, NR, $0)}' "$TODO"
+}
 
-"-h" | "--help")
-    echo -e "Usage:\n\t" \
-        "$0 -a add\n\t" \
-        "$0 -d done\n\t" \
-        "$0 -u undo\n\t" \
-        "$0 -D delete\n\t" \
-        "$0 -r recycle\n\t" \
-        "$0 -s sort\n\t" \
-        "$0 -l list\n\t" \
-        "$0 -h this help"
+# Process command line arguments
+# Process command line arguments
+case $1 in
+-a | --add)
+    shift
+    add_task "$@"
     ;;
-
+-d | --done)
+    shift
+    mark_done "$1" "$@"
+    ;;
+-u | --undo)
+    shift
+    undo_done "$1" "$@"
+    ;;
+-D | --del | --delete)
+    shift
+    delete_task "$1" "$@"
+    ;;
+-r | --recycle)
+    recycle_completed
+    ;;
+-s | --sort)
+    sort_tasks
+    ;;
+-l | --list | "")
+    list_tasks
+    ;;
+-h | --help)
+    usage
+    ;;
 *)
-    $0 -a "$*"
+    add_task "$@"
     ;;
 esac
