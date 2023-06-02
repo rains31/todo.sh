@@ -82,7 +82,7 @@ sort_tasks() {
 # Function to list tasks
 list_tasks() {
     echo -ne "\033[2J\033[1;1H"
-    $AWK '{printf("\033[%dm%d %s\033[m\n", $1=="[x]"||$2=="[x]"?9:$1=="[!]"||$2=="[!]"?31:$1=="[?]"||$2=="[?]"?33:32, NR, $0)}' "$TODO"
+    $AWK '{$1="";printf("\033[%dm%d%s\033[m\n",$2=="[x]"?9:$2=="[!]"?31:$2=="[?]"?33:32, NR, $0)}' "$TODO"
 }
 
 # Process command line arguments
