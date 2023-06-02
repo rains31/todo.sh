@@ -69,7 +69,7 @@ delete_task() {
 
 # Function to recycle completed tasks
 recycle_completed() {
-    $SED -i '/^\[.\]/d' "$TODO"
+    $SED -i '/^- \[x\]/d' "$TODO"
     $0 -l
 }
 
